@@ -1,10 +1,10 @@
 package org.openchai.spark.p2p
 
-trait P2pClient {
+trait P2pBinding {
 
   def bind(rpc: P2pRpc, serviceIf: ServiceIF) = {
     assert(rpc.isConnected)
-    serviceIf.rpc = rpc
+    serviceIf.optRpc = Some(rpc)
   }
 
 }

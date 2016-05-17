@@ -12,7 +12,7 @@ object TcpServer {
   val BufSize = (Math.pow(2, 20) - 1).toInt // 1Meg
 }
 
-case class TcpServer(host: String, port: Int, serviceIf: P2pIF) extends P2pServer {
+case class TcpServer(host: String, port: Int, serviceIf: ServerIF) extends P2pServer with P2pBinding {
 
   import TcpServer._
 
@@ -36,10 +36,13 @@ case class TcpServer(host: String, port: Int, serviceIf: P2pIF) extends P2pServe
         val buf = new Array[Byte](BufSize)
         while (true) {
           debug("Listening for messages..")
+          while (is.available() <= 0) {
+            Thread.sleep(100)
+          }
           is.read(buf)
-          val obj = deserialize(buf)
-          debug(s"Message received: ${obj.toString}")
-          val resp = serviceIf.service(obj)
+          val req = deserialize(buf).asInstanceOf[P2pReq[_]]
+          debug(s"Message received: ${req.toString}")
+          val resp = serviceIf.service(req)
           debug(s"Sending response:  ${resp.toString}")
           val ser = serialize(resp)
           os.write(ser)
@@ -50,6 +53,9 @@ case class TcpServer(host: String, port: Int, serviceIf: P2pIF) extends P2pServe
   }
 
   override def run(): Unit = {
+    if (serverSocket == null) {
+      start
+    }
     while (!stopRequested) {
       val t = service(serverSocket.accept())
       t.start

@@ -19,8 +19,8 @@ object TcpCommon {
   def deserialize /*[T <: Serializable : TypeTag]*/ (a: Array[Byte]): Any = {
     import java.io._
     // TODO: determine how to properly size the bos
-    val buf = new Array[Byte](2 ^ 18)
-    val bis = new ByteArrayInputStream(buf)
+//    val buf = new Array[Byte](2 ^ 18)
+    val bis = new ByteArrayInputStream(a)
     val ois = new ObjectInputStream(bis)
 //    bis.close
     ois.readObject

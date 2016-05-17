@@ -4,14 +4,14 @@ package object p2p {
 
   trait P2pConnectionParams
 
-  trait ServiceIF[T] {
+  trait ServiceIF {
+//    def service(req: P2pReq[_]): P2pResp[_]
 
     import reflect.runtime.universe.TypeTag
     def request[U: TypeTag, V: TypeTag](req: P2pReq[U]): P2pResp[V] = {
       getRpc.request(req)
     }
-    var rpc: P2pRpc = _
-    protected var optRpc: Option[P2pRpc] = None
+    protected[p2p] var optRpc: Option[P2pRpc] = None
 
     protected def getRpc() = optRpc match {
       case None => throw new IllegalStateException("RPC mechanism has not been set")

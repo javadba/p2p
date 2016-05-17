@@ -1,11 +1,12 @@
 package org.openchai.spark.p2p
 
 import TcpCommon._
+import org.openchai.spark.p2p.UpdaterIF.TrainingParams
 
 case class TcpConnectionParams(server: String, port: Int) extends P2pConnectionParams
 
 case class TcpClient(connParams: TcpConnectionParams, serviceIf: ServiceIF)
-  extends P2pRpc with P2pClient {
+  extends P2pRpc with P2pBinding {
 
   import TcpClient._
   import org.openchai.spark.util.Logger._
@@ -19,6 +20,10 @@ case class TcpClient(connParams: TcpConnectionParams, serviceIf: ServiceIF)
   private var os: OutputStream = _
   private var is: InputStream = _
 
+  {
+    connect(connParams)
+//    bind(this, serviceIf)
+  }
   override def isConnected: Boolean = is != null && os != null
 
   override def connect(connParam: P2pConnectionParams): Boolean = {
@@ -45,10 +50,10 @@ case class TcpClient(connParams: TcpConnectionParams, serviceIf: ServiceIF)
 
 object TcpClient {
   def main(args: Array[String]) {
+    import UpdaterIF._
     val serviceIf = new UpdaterIF
     val client = TcpClient(TcpConnectionParams("localhost", 7088), serviceIf)
-    val w = serviceIf.getWeights
-
+    val w = serviceIf.run(TrainingParams(new DefaultModel(), new DefaultHyperParams()),3)
   }
 }
 // show
