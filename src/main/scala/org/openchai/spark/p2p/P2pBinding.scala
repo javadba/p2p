@@ -7,4 +7,5 @@ trait P2pBinding {
     serviceIf.optRpc = Some(rpc)
   }
 
+  val reconnectEveryRequest: Boolean = false
 }

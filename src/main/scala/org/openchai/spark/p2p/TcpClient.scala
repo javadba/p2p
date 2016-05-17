@@ -21,12 +21,13 @@ case class TcpClient(connParams: TcpConnectionParams, serviceIf: ServiceIF)
   private var is: InputStream = _
 
   {
-    connect(connParams)
+      connect(connParams)
 //    bind(this, serviceIf)
   }
   override def isConnected: Boolean = is != null && os != null
 
   override def connect(connParam: P2pConnectionParams): Boolean = {
+    savedConnParam = connParam
     val tconn = connParams.asInstanceOf[TcpConnectionParams]
     sock = new Socket(tconn.server, tconn.port)
     os = sock.getOutputStream
@@ -35,15 +36,26 @@ case class TcpClient(connParams: TcpConnectionParams, serviceIf: ServiceIF)
     is != null && os != null
   }
 
+  private var savedConnParam: P2pConnectionParams = _
+
   override def request[U /*<: Serializable */ : TypeTag , V /*<: Serializable */ :  TypeTag](req: P2pReq[U]): P2pResp[V] = {
     // TODO: determine how to properly size the bos
-    val buf = new Array[Byte](2 ^ 18)
+    if (!isConnected) {
+      connect(savedConnParam)
+    }
+    val buf = new Array[Byte](Math.pow(2,20).toInt)
     val serreq = serialize(req)
     os.write(serreq)
     val nread = is.read(buf)
     info(s"request: received $nread bytes")
     val o = deserialize(buf)
     val out = o.asInstanceOf[P2pResp[V]]
+    if (reconnectEveryRequest) {
+      sock.close
+      sock = null
+      os = null
+      is = null
+    }
     out
   }
 }

@@ -28,17 +28,17 @@ case class TcpServer(host: String, port: Int, serviceIf: ServerIF) extends P2pSe
 
   def service(socket: Socket): Thread = {
     val sockaddr = socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress]
-    info(s"Received connection request from ${sockaddr.getHostName}@${sockaddr.getAddress.getHostAddress}")
+    info(s"Received connection request from ${sockaddr.getHostName}@${sockaddr.getAddress.getHostAddress} on socket ${socket.getPort}")
     val t = new Thread() {
       override def run() = {
         val is = new BufferedInputStream(socket.getInputStream)
         val os = new BufferedOutputStream(socket.getOutputStream)
         val buf = new Array[Byte](BufSize)
-        while (true) {
+        do {
           debug("Listening for messages..")
-          while (is.available() <= 0) {
-            Thread.sleep(100)
-          }
+//          while (is.available() <= 0) {
+//            Thread.sleep(100)
+//          }
           is.read(buf)
           val req = deserialize(buf).asInstanceOf[P2pReq[_]]
           debug(s"Message received: ${req.toString}")
@@ -46,7 +46,9 @@ case class TcpServer(host: String, port: Int, serviceIf: ServerIF) extends P2pSe
           debug(s"Sending response:  ${resp.toString}")
           val ser = serialize(resp)
           os.write(ser)
-        }
+          os.flush
+        } while (!reconnectEveryRequest)
+        Thread.sleep(5000)
       }
     }
     t
