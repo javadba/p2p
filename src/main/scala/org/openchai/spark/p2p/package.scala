@@ -28,4 +28,14 @@ package object p2p {
   trait P2pReq[T] extends P2pMessage[T]
 
   trait P2pResp[T] extends P2pMessage[T]
+
+  trait ArrayData[V] {
+    def dims: Seq[Int]
+    def toArray: V
+  }
+
+  type DArray = Array[Double]
+  case class MData(override val dims: Seq[Int], override val toArray: DArray) extends ArrayData[DArray]
+  type AnyData = MData // ArrayData[Double]
+  case class TData(label: Double, data: Vector[Double])
 }

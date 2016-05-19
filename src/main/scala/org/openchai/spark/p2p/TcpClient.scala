@@ -1,7 +1,6 @@
 package org.openchai.spark.p2p
 
 import TcpCommon._
-import org.openchai.spark.p2p.UpdaterIF.TrainingParams
 
 case class TcpConnectionParams(server: String, port: Int) extends P2pConnectionParams
 
@@ -58,14 +57,22 @@ case class TcpClient(connParams: TcpConnectionParams, serviceIf: ServiceIF)
     }
     out
   }
+
+//  def run() = {
+//    import UpdaterIF._
+//    val serviceIf = new UpdaterIF
+//    val w = serviceIf.run(ModelParams(new DefaultModel(), new DefaultHyperParams()),TestData.mdata(4,5), 3)
+//  }
 }
 
 object TcpClient {
+  val TestPort = 8989
   def main(args: Array[String]) {
     import UpdaterIF._
+    val port = if (args.length >= 1) args(0) else TestPort
     val serviceIf = new UpdaterIF
-    val client = TcpClient(TcpConnectionParams("localhost", 7088), serviceIf)
-    val w = serviceIf.run(TrainingParams(new DefaultModel(), new DefaultHyperParams()),3)
+    val client = TcpClient(TcpConnectionParams("localhost", TestPort), serviceIf)
+    val w = serviceIf.run(ModelParams(new DefaultModel(), new DefaultHyperParams()),TestData.mdata(10,100), 3)
   }
 }
 // show
