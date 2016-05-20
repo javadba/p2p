@@ -85,8 +85,7 @@ class UpdaterServerIF(weightsMergePolicy: String) extends ServerIF {
   val MaxLoops = 4
 
   override def service(req: P2pReq[_]): P2pResp[_] = {
-    var curWeights: DArray = null
-    var curAccuracy = -1.0
+    var curWeightsAndAccuracy: (DArray, Double) = (null,-1.0)
     val allResults = new mutable.ArrayBuffer[EpochResult]()
     req match {
       case o: KeepGoingReq => {
@@ -101,21 +100,23 @@ class UpdaterServerIF(weightsMergePolicy: String) extends ServerIF {
       case o: SendEpochResultReq => {
         val epochResult = o.value
         allResults += epochResult
-        var (curAccuracy1, curWeights1) = {
+        curWeightsAndAccuracy = {
           if (weightsMergePolicy == "best") {
-            if (epochResult.accuracy > curAccuracy) {
-              (epochResult.accuracy, Some(epochResult))
+            if (epochResult.accuracy > curWeightsAndAccuracy._2) {
+              info(s"Found best: accuracy = ${epochResult.accuracy}")
+              (epochResult.W.d, epochResult.accuracy)
             } else {
-              (curAccuracy, curWeights)
+              debug("Sorry we're worse .. skipping..")
+              curWeightsAndAccuracy
             }
           } else {
             val sum = allResults.map(x => new BDV[Double](x.W.d))
               .foldLeft(new BDV[Double](Array.fill(allResults.head.W.d.length)(0.0))) { case (sum, bdv) => sum + bdv }
             val avg = sum :/ allResults.length.toDouble
-            (allResults.map(_.accuracy).sum / allResults.length, avg)
+            (avg.toArray, allResults.map(_.accuracy).sum / allResults.length)
           }
         }
-        SendEpochResultResp(ModelParams(DefaultModel(), DefaultHyperParams(), Some(Weights(epochResult.W.dims, curWeights))
+        SendEpochResultResp(ModelParams(DefaultModel(), DefaultHyperParams(), Some(Weights(epochResult.W.dims, curWeightsAndAccuracy._1))
           //          Some(Weights(Array(4, 3), Array.tabulate(12) {
           //            _ * new Random().nextDouble }))
         ))
@@ -130,19 +131,24 @@ object UpdaterIF {
 
   case class Weights(dims: Seq[Int], d: Array[Num]) {
     def toString(d: Array[Num], dims: Seq[Int]) = {
+      val PrintLen = 100
       def round(d: Double, p: Int) = (d * Math.pow(10, p)).toLong / Math.pow(10, p)
+      val prdat = if (d.length <= PrintLen) d else {
+        val smalld = new Array[Double](PrintLen)
+        System.arraycopy(d, 0, smalld, 0, PrintLen)
+        smalld
+      }
       if (dims.length != 2) {
-        s"Weights: dims=${dims.mkString("[", ",", "]")} data=${d.mkString("[", "", "]")}"
+        s"Weights: dims=${dims.mkString("[", ",", "]")} data=${prdat.mkString("[", "", "]")}"
       } else {
-        (0 until d.length).foldLeft(s" -- Weights (${dims(0)}x${dims(1)}) --\n") { case (s, ix) =>
+        prdat.indices.foldLeft(s" -- Weights (${dims(0)}x${dims(1)}) --\n") { case (s, ix) =>
           s + (if (ix % dims(1) == 0) "\n" else "") + "\t" + round(d(ix), 2)
         }
       }
     }
 
-    override def toString() = s"Weights: dims=${toString(d, dims)}"
-  }
-
+    override def toString() = toString(d, dims)
+   }
 
   abstract class Model[T <: AnyData] {
     def compute(data: T): EpochResult = ???
