@@ -1,5 +1,7 @@
 package org.openchai.spark
 
+import org.openchai.spark.util.TcpUtils
+
 package object p2p {
 
   trait P2pConnectionParams

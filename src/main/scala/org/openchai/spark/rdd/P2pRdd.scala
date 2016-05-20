@@ -11,8 +11,9 @@ import scala.reflect.ClassTag
 
 class P2pRDD[T /*<: Serializable */: ClassTag](sc: SparkContext, parent: RDD[T], p2pParams: P2pConnectionParams)
   extends RDD[T](parent) {
-  def asyncConvergence(tuple: (Vector, Double)) = ???
+//  def asyncConvergence(tuple: (Vector, Double)) = ???
 
+  TcpServer.startServer(TcpServer.TestPort)
   override def compute(split: Partition, context: TaskContext): Iterator[T] = {
     val updaterIF =  new UpdaterIF
     val p2pClient = new TcpClient(p2pParams.asInstanceOf[TcpConnectionParams], updaterIF)

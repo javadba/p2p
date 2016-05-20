@@ -1,5 +1,6 @@
-package org.openchai.spark.p2p
-import java.net._
+package org.openchai.spark.util
+
+import java.net.InetAddress
 
 /**
  * TcpUtils

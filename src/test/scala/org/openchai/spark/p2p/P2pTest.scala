@@ -7,18 +7,12 @@ package org.openchai.spark.p2p
 object P2pTest {
 
   val weightsMergePolicy: String = "best"
-  val TestPort = 8989
+  val TestPort = TcpServer.TestPort
 
   def main(args: Array[String]) {
-    val host = TcpUtils.getLocalHostname
-    val server = new TcpServer(host, TestPort, new UpdaterServerIF(weightsMergePolicy))
-    new Thread() {
-      override def run() {
-        server.run
-      }
-    }.start
+    TcpServer.startServer(TestPort)
     TcpClient.main(Array("" + TestPort))
-//    val w = serviceIf.run(ModelParams(new DefaultModel(), new DefaultHyperParams()),3)
     Thread.currentThread.join
+//    val w = serviceIf.run(ModelParams(new DefaultModel(), new DefaultHyperParams()),3)
   }
 }
