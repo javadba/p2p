@@ -24,6 +24,13 @@ import java.util.concurrent.{CompletableFuture, Callable, Executors}
 import java.util.concurrent.Future
 
 object FileUtils {
+  def mkdirs(dir: String) = {
+    val fdir = new File(dir)
+    if (!fdir.exists()) {
+      fdir.mkdirs
+    }
+  }
+
   import Logger._
 
   def write(path: String, data: String): Unit = tools.nsc.io.File(path).writeAll(data)

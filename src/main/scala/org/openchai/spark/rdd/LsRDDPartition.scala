@@ -16,15 +16,25 @@
  */
 package org.openchai.spark.rdd
 
-import org.apache.spark.SparkContext
-import org.openchai.spark.p2p.{TcpConnectionParams, TcpServer}
+import org.apache.spark.{Partitioner, Partition}
 
-object P2pRddTest {
-  def main(args: Array[String]) = {
-    val master = args(0)
-    val sc = new SparkContext(master,"P2pRDDTest")
-    val lsrdd = LsRDDTest.sourceRdd(sc, master, "/data/lsrdd")
-    val params = TcpConnectionParams(master, TcpServer.TestPort)
-    val p2pRdd = new P2pRDD/*[LabeledArr]*/(sc, lsrdd, params)
+case class LsRDDPartition[T](override val index: Int, rackPath: RackPath) extends Partition
+
+class LsRDDPartitioner[K,V](parts: Seq[LsRDDPartition[V]]) extends Partitioner {
+
+  import collection.mutable
+
+  override def numPartitions: Int = parts.length
+
+  val sorted = parts.sortBy(_.rackPath.fullPath).zipWithIndex
+  val sortedMap = sorted.foldLeft(mutable.HashMap[String, Int]()) { case (h, (p, x)) =>
+    h(p.rackPath.fullPath) = x
+    h
+  }
+
+  override def getPartition(key: Any): Int = {
+    Math.abs(key.hashCode) % sortedMap.size
+//    sortedMap(key.asInstanceOf[String])
   }
 }
+

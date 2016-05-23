@@ -16,18 +16,11 @@
  */
 package org.openchai.spark.rdd
 
-import java.io.File
-import java.net.InetAddress
+import org.apache.spark.rdd.RDD
+import org.apache.spark.{Partition, Partitioner}
 
-import org.apache.spark.rdd.{OrderedRDDFunctions, RDD}
-import org.apache.spark.{Partition, Partitioner, SparkContext, TaskContext}
-import org.openchai.spark.util.FileUtils
 
-import scala.reflect.runtime.universe.TypeTag
-
-case class LsRDDPartition[T](override val index: Int, rackPath: RackPath) extends Partition
-
-trait LsRDD[K, V] extends Serializable {
+trait LsRDD[K, V] extends RDD[(K, V)] with Serializable {
 
   def paths(): Seq[String]
 
@@ -36,89 +29,14 @@ trait LsRDD[K, V] extends Serializable {
   type KV[A, B] = (A, B)
   type KVO = KV[K, V]
 
-  def rackPathsToPartitions[T] = rackPaths.zipWithIndex.map{ case (r,x) =>
-    LsRDDPartition[T](x,r)}.toArray // .asInstanceOf[Array[Partition]]
+  def rackPathsToPartitions[T] = rackPaths.zipWithIndex.map { case (r, x) =>
+    LsRDDPartition[T](x, r)
+  }.toArray // .asInstanceOf[Array[Partition]]
 
-  protected[rdd] var parts: Array[Partition] = _
-}
-
-case class LsSinkRDD[K1: TypeTag, V1: TypeTag, K2: TypeTag, V2: TypeTag](@transient sc: SparkContext, var paths: Seq[String],
-  parent: RDD[(K1, V1)])(implicit evk1: TypeTag[K1], evv1: TypeTag[V1], evk2: TypeTag[K2], evv2: TypeTag[V2])
-  extends RDD[(K2, V2)](parent) with LsRDD[K2, V2] {
-
-  import LsRDD._
-
-  override val partitioner /*: LsRDDPartitioner[K2,V2]*/ = Some(new LsRDDPartitioner[K2,V2](parts.asInstanceOf[Seq[LsRDDPartition[V2]]]))
-
-  override def saveAsTextFile(rackPathsSeparatedByCommas: String): Unit = {
-    saveToRackPathAsTextFile(rackPathsSeparatedByCommas.split(","))
-  }
-
-  def toRecord(tup: (String, DArray)) = {
-    s"${tup._1}$Delim${tup._2.asInstanceOf[DArray].mkString(""+Delim)}}"
-  }
-
-  def saveToRackPathAsTextFile(paths: Seq[String]) = {
-    val partedRdd = parent.asInstanceOf[OrderedRDDFunctions[K1,V1,(K1,V1)]].repartitionAndSortWithinPartitions(partitioner.get)
-    parts = partedRdd.partitions
-    val converted = partedRdd.map { case (k, v) => (k.asInstanceOf[K2], v.asInstanceOf[V2]) }
-    converted.mapPartitionsWithIndex { case (ix, iter) =>
-      val dat = iter.toList
-      saveToRackPath(paths(ix), dat.asInstanceOf[Seq[(String, DArray)]].map(toRecord).mkString("\n"))
-      dat.toIterator
-    }
-  }
-
-  override def compute(split: Partition, context: TaskContext): Iterator[KVO] = {
-    throw new IllegalStateException("SourceRDD should never be computed")
-  }
-
-  def saveToRackPath(path: RackPath, data: String): Unit = {
-    // TODO: support remote scp
-    var f = new File(path.path)
-    val dir = if (!f.isDirectory) {
-      f.getParentFile
-    } else {
-      f
-    }
-    if (!dir.exists) {
-      dir.mkdirs
-    }
-    FileUtils.write(path.path, data)
-  }
-
-  override protected def getPartitions: Array[Partition] = parts
-
-  override protected def getPreferredLocations(split: Partition): Seq[String] = {
-    val lsPartition = split.asInstanceOf[LsRDDPartition[Double]]
-    Seq(lsPartition.rackPath.host)
-  }
-
-}
-
-case class LsSourceRDD[K1: TypeTag, V1: TypeTag, K2: TypeTag, V2: TypeTag](@transient sc: SparkContext, var paths: Seq[String])(implicit evk1: TypeTag[K1], evv1: TypeTag[V1], evk2: TypeTag[K2], evv2: TypeTag[V2])
-  extends RDD[(K2, V2)](sc, Nil) with LsRDD[K2, V2] {
-
-  override def compute(split: Partition, context: TaskContext): Iterator[(K2, V2)] = {
-    val part = split.asInstanceOf[LsRDDPartition[Int]]
-    val d = readFromRackPath(part.rackPath)
-    //    val conv = converter(newType.newInstance, ev.newInstance) _
-    d.split("\n").map(l => (part.rackPath.host, l)).iterator.asInstanceOf[Iterator[(K2, V2)]]
-  }
-
-  def readFromRackPath(rp: RackPath) = {
-    val host = rp.host
-    val sourceHost = host match {
-      case h if InetAddress.getLocalHost.getHostName.equals(host) => h
-      case _ => RackPath.hostToRack(host)
-    }
-    // TODO: st up scp read from the host
-    val d = FileUtils.readPath(rp.path)
-    d
-  }
+  protected[rdd] var parts: Array[Partition] = getPartitions
 
   override protected def getPartitions: Array[Partition] =
-    rackPathsToPartitions[V2].asInstanceOf[Array[Partition]]
+    rackPathsToPartitions[V].asInstanceOf[Array[Partition]]
 
   override protected def getPreferredLocations(split: Partition): Seq[String] = {
     val lsPartition = split.asInstanceOf[LsRDDPartition[Double]]
@@ -149,9 +67,9 @@ object LsRDD {
     val labeledarr = classOf[LabeledArr]
 
     val out = outClass match {
-      case x if x==string => in
-      case x if x==double => in
-      case x if x==darr => in.split(Delim).map(_.toDouble)
+      case x if x == string => in
+      case x if x == double => in
+      case x if x == darr => in.split(Delim).map(_.toDouble)
       case x if x == labeledarr => {
         val headTail = in.split(Delim).splitAt(1)
         (headTail._1.head, headTail._2.map(_.toDouble).splitAt(1))
@@ -163,19 +81,3 @@ object LsRDD {
 
 }
 
-class LsRDDPartitioner[K,V](parts: Seq[LsRDDPartition[V]]) extends Partitioner {
-
-  import collection.mutable
-
-  override def numPartitions: Int = parts.length
-
-  val sorted = parts.sortBy(_.rackPath.fullPath).zipWithIndex
-  val sortedMap = sorted.foldLeft(mutable.HashMap[String, Int]()) { case (h, (p, x)) =>
-    h(p.rackPath.fullPath) = x
-    h
-  }
-
-  override def getPartition(key: Any): Int = {
-    sortedMap(key.asInstanceOf[String])
-  }
-}
