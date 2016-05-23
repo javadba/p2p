@@ -57,13 +57,9 @@ class UpdaterIF extends ServiceIF {
       debug(s"About to train with ModelParams=${trainParams.toString}")
       val er = trainEpoch(trainParams, data)
       trainParams = sendEpochResult(er).value
+      n += 1
     }
-    new Iterator[Double]() {
-      override def hasNext: Boolean = false
-
-      override def next(): Num = ???
-    }
-
+    info(s"We were told to *not* keep going for n=$n")
   }
 
 }
@@ -82,10 +78,10 @@ class UpdaterServerIF(weightsMergePolicy: String) extends ServerIF {
   import collection.mutable
 
   var loops = 0
-  val MaxLoops = 4
+  val MaxLoops = 20
 
+  var curWeightsAndAccuracy: (DArray, Double) = (null,-1.0)
   override def service(req: P2pReq[_]): P2pResp[_] = {
-    var curWeightsAndAccuracy: (DArray, Double) = (null,-1.0)
     val allResults = new mutable.ArrayBuffer[EpochResult]()
     req match {
       case o: KeepGoingReq => {
