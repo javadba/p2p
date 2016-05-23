@@ -3,12 +3,6 @@ package org.openchai.spark.p2p
 import breeze.linalg.{DenseVector => BDV}
 import breeze.optimize.proximal.QpGenerator
 import breeze.optimize.{DiffFunction, ProjectedQuasiNewton}
-import org.apache.spark.ml.MLProxy._
-import org.apache.spark.mllib.linalg._
-import org.apache.spark.mllib.linalg.{SparseVector, Vector, Vectors}
-import org.apache.spark.mllib.optimization.Gradient
-import org.apache.spark.mllib.optimization.Updater
-import org.apache.spark.rdd.RDD
 import org.openchai.spark.util.Logger._
 
 import scala.util.Random
@@ -75,6 +69,7 @@ object UpdaterServerIF {
 class UpdaterServerIF(weightsMergePolicy: String) extends ServerIF {
 
   import UpdaterIF._
+
   import collection.mutable
 
   var loops = 0
@@ -113,8 +108,6 @@ class UpdaterServerIF(weightsMergePolicy: String) extends ServerIF {
           }
         }
         SendEpochResultResp(ModelParams(DefaultModel(), DefaultHyperParams(), Some(Weights(epochResult.W.dims, curWeightsAndAccuracy._1))
-          //          Some(Weights(Array(4, 3), Array.tabulate(12) {
-          //            _ * new Random().nextDouble }))
         ))
       }
       case _ => throw new IllegalArgumentException(s"Unknown service type ${req.getClass.getName}")
@@ -149,8 +142,6 @@ object UpdaterIF {
   abstract class Model[T <: AnyData] {
     def compute(data: T): EpochResult = ???
 
-    //    def train(data: T): Model[T] = ???
-    //
     def update(params: HyperParams, weights: Weights): Model[T] = ???
 
   }
@@ -159,12 +150,10 @@ object UpdaterIF {
   case class DefaultModel() extends Model[MData] {
 
     import breeze.linalg._
-    import breeze.numerics._
 
     val UseLbfgs = true
 
     override def compute(data: MData): EpochResult = {
-      //      epochResult(data.dims(0), data.dims(1))
 
       val dv = DenseVector(data.toArray)
       implicit class MathOps(x: Double) {
@@ -214,7 +203,6 @@ object UpdaterIF {
         state
       }
       EpochResult(Weights(data.dims, state.x.toArray), state.fVals.toArray, state.value, state.value)
-      //      null
     }
 
     override def update(params: HyperParams, weights: Weights): Model[MData] = {
@@ -226,9 +214,7 @@ object UpdaterIF {
 
   case class DefaultHyperParams() extends HyperParams
 
-  import reflect.runtime.universe.TypeTag
-
-  case class ModelParams /*[T <: AnyData : TypeTag]*/ (model: Model[MData], params: HyperParams, var optW: Option[Weights] = None) {
+  case class ModelParams(model: Model[MData], params: HyperParams, var optW: Option[Weights] = None) {
     def weights = {
       optW.getOrElse(throw new IllegalStateException("Weights not set"))
     }

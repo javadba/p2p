@@ -3,8 +3,7 @@ package org.openchai.spark.rdd
 import java.io.File
 
 import org.apache.spark.SparkContext
-import org.openchai.spark.rdd.LsRDD.LabeledArr
-import org.openchai.spark.util.{Launcher, TcpUtils}
+import org.openchai.spark.util.TcpUtils
 
 class LsRDDTest
 
@@ -17,6 +16,7 @@ object LsRDDTest {
     lsrdd
   }
 
+  // TODO: remove hardcoding of paths..
   val SparkHome = "/shared/sparkmaven"
   def rddTest(master: String, appArgs: Array[String]) = {
     val env = Map("SPARK_HOME" -> SparkHome,"spark.driver.memory"->"4g")
@@ -32,18 +32,10 @@ object LsRDDTest {
   }
 
   def main(args: Array[String]) {
-//    if (args(0) == "launched") {
       val master = args(0)
       val appArgs = if (args.length > 1) args.slice(1, args.length) else new Array[String](0)
       println(s"Calling rddTest with master=$master and appArgs=${appArgs.mkString(" ")}")
       rddTest(master, appArgs)
-
-//    } else {
-//      // ::
-//      // first arg is "launcher" and should be removed
-//      Launcher(classOf[LsRDDTest].getName, "launched" +: args.toSeq)
-//    }
-
   }
 
 }

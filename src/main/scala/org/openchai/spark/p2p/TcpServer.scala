@@ -1,15 +1,13 @@
 package org.openchai.spark.p2p
 
-import java.io.{BufferedOutputStream, BufferedInputStream}
+import java.io.{BufferedInputStream, BufferedOutputStream}
 import java.net._
-import java.util.concurrent.Executors
-import TcpCommon._
-import org.openchai.spark.util.{TcpUtils, Logger}
-import Logger._
-import collection.mutable
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
-import scala.util.Try
+
+import org.openchai.spark.p2p.TcpCommon._
+import org.openchai.spark.util.Logger._
+import org.openchai.spark.util.{Logger, TcpUtils}
+
+import scala.collection.mutable
 
 object TcpServer {
   val BufSize = (Math.pow(2, 20) - 1).toInt
@@ -31,7 +29,6 @@ object TcpServer {
 
   def main(args: Array[String]) {
     startServer(TestPort)
-    //    val w = serviceIf.run(ModelParams(new DefaultModel(), new DefaultHyperParams()),3)
     Thread.currentThread.join
   }
 }
@@ -83,9 +80,6 @@ case class TcpServer(host: String, port: Int, serviceIf: ServerIF) extends P2pSe
         val buf = new Array[Byte](BufSize)
         do {
           debug("Listening for messages..")
-          //          while (is.available() <= 0) {
-          //            Thread.sleep(100)
-          //          }
           is.read(buf)
           val req = deserialize(buf).asInstanceOf[P2pReq[_]]
           debug(s"Message received: ${req.toString}")

@@ -7,10 +7,6 @@ import java.util.concurrent.{CompletableFuture, Callable, Executors}
 
 import java.util.concurrent.Future
 
-/**
- * FileUtils
- *
- */
 object FileUtils {
 
   import Logger._
@@ -45,7 +41,6 @@ object FileUtils {
           tasksBuf += tpool.submit(new ReadTask(f.getPath))
         }
       }
-      //      CompletableFuture.allOf(tasksBuf).thenApply.
       tasksBuf.foreach { t => sb.append(t.get) }
       sb.toString
     }

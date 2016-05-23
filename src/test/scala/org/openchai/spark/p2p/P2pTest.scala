@@ -13,6 +13,5 @@ object P2pTest {
     TcpServer.startServer(TestPort)
     TcpClient.main(Array("" + TestPort))
     Thread.currentThread.join
-//    val w = serviceIf.run(ModelParams(new DefaultModel(), new DefaultHyperParams()),3)
   }
 }

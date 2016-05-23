@@ -7,7 +7,6 @@ package object p2p {
   trait P2pConnectionParams
 
   trait ServiceIF {
-//    def service(req: P2pReq[_]): P2pResp[_]
 
     import reflect.runtime.universe.TypeTag
     def request[U: TypeTag, V: TypeTag](req: P2pReq[U]): P2pResp[V] = {
@@ -38,6 +37,6 @@ package object p2p {
 
   type DArray = Array[Double]
   case class MData(override val dims: Seq[Int], override val toArray: DArray) extends ArrayData[DArray]
-  type AnyData = MData // ArrayData[Double]
+  type AnyData = MData
   case class TData(label: Double, data: Vector[Double])
 }

@@ -2,10 +2,6 @@ package org.openchai.spark.p2p
 
 import java.util.Random
 
-/**
-* TestData
-*
-*/
 object TestData {
   import UpdaterIF._
   def randArr(size: Int) = Array.tabulate(size) {

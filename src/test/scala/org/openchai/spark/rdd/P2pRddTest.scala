@@ -1,8 +1,7 @@
 package org.openchai.spark.rdd
 
 import org.apache.spark.SparkContext
-import org.openchai.spark.p2p.{TcpServer, TcpConnectionParams, P2pConnectionParams}
-import org.openchai.spark.rdd.LsRDD.LabeledArr
+import org.openchai.spark.p2p.{TcpConnectionParams, TcpServer}
 
 object P2pRddTest {
   def main(args: Array[String]) = {

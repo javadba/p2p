@@ -20,16 +20,14 @@ object Launcher {
       .setSparkHome("/shared/sparkmaven")
       .setAppResource("/git/ocrdd/libs/spark_p2prdd-tests-1.0.0.jar")
       .setAppResource("/git/ocrdd/libs/spark_p2prdd-1.0.0.jar")
-      //    .setMainClass("com.astralync.demo.spark.RegexFilters")
       .setMainClass(mainClass)
       .setMaster(master)
-    //      .addSparkArg()
     if (!appArgs.isEmpty) {
       spark.addAppArgs(appArgs: _*)
     }
     val s = spark.launch()
     println("launched.. and waiting..")
-    s.waitFor() // This method disappeared!!
+    s.waitFor()
     println("crapped out")
 
   }

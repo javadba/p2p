@@ -1,10 +1,5 @@
 package org.openchai.spark.p2p
 
-/**
- * SerializableTest
- *
- */
-
 import reflect.runtime.universe._
 
 abstract class MySerializable[T <: Serializable : TypeTag] {

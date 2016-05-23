@@ -7,7 +7,6 @@ case class TcpConnectionParams(server: String, port: Int) extends P2pConnectionP
 case class TcpClient(connParams: TcpConnectionParams, serviceIf: ServiceIF)
   extends P2pRpc with P2pBinding {
 
-  import TcpClient._
   import org.openchai.spark.util.Logger._
 
   import java.io._
@@ -21,7 +20,6 @@ case class TcpClient(connParams: TcpConnectionParams, serviceIf: ServiceIF)
 
   {
       connect(connParams)
-//    bind(this, serviceIf)
   }
   override def isConnected: Boolean = is != null && os != null
 
@@ -37,7 +35,7 @@ case class TcpClient(connParams: TcpConnectionParams, serviceIf: ServiceIF)
 
   private var savedConnParam: P2pConnectionParams = _
 
-  override def request[U /*<: Serializable */ : TypeTag , V /*<: Serializable */ :  TypeTag](req: P2pReq[U]): P2pResp[V] = {
+  override def request[U : TypeTag , V :  TypeTag](req: P2pReq[U]): P2pResp[V] = {
     // TODO: determine how to properly size the bos
     if (!isConnected) {
       connect(savedConnParam)
@@ -58,11 +56,6 @@ case class TcpClient(connParams: TcpConnectionParams, serviceIf: ServiceIF)
     out
   }
 
-//  def run() = {
-//    import UpdaterIF._
-//    val serviceIf = new UpdaterIF
-//    val w = serviceIf.run(ModelParams(new DefaultModel(), new DefaultHyperParams()),TestData.mdata(4,5), 3)
-//  }
 }
 
 object TcpClient {
@@ -75,4 +68,3 @@ object TcpClient {
     val w = serviceIf.run(ModelParams(new DefaultModel(), new DefaultHyperParams()),TestData.mdata(10,100), 3)
   }
 }
-// show
