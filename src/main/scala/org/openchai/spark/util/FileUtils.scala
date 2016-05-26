@@ -19,19 +19,23 @@ package org.openchai.spark.util
 import java.io.File
 import java.nio.file.Paths
 import java.util.Scanner
-import java.util.concurrent.{CompletableFuture, Callable, Executors}
-
-import java.util.concurrent.Future
+import java.util.concurrent.{Callable, Executors, Future}
 
 object FileUtils {
+  import Logger._
   def mkdirs(dir: String) = {
     val fdir = new File(dir)
     if (!fdir.exists()) {
+      info(s"Creating directory ${fdir.getPath}")
       fdir.mkdirs
     }
   }
-
-  import Logger._
+  def rmdirs(dir: String): Array[(String, Boolean)] = {
+//    if (fdir.exists()) {
+//      debug(s"Removing directory ${fdir.getPath}")
+    Option(new File(dir).listFiles)
+      .map(_.flatMap(f => rmdirs(f.getPath))).getOrElse(Array()) :+ (dir -> new File(dir).delete)
+  }
 
   def write(path: String, data: String): Unit = tools.nsc.io.File(path).writeAll(data)
 

@@ -17,25 +17,34 @@
 package org.openchai.spark.rdd
 
 import org.apache.spark.mllib.linalg.Vector
-import org.apache.spark.{SparkContext, TaskContext, Partition}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.{Partition, SparkContext, TaskContext}
 import org.openchai.spark.p2p.UpdaterIF.{DefaultHyperParams, DefaultModel, ModelParams}
 import org.openchai.spark.p2p._
 
-import reflect.runtime.universe._
 import scala.reflect.ClassTag
 
-class P2pRDD[T /*<: Serializable */: ClassTag](sc: SparkContext, parent: RDD[T], p2pParams: P2pConnectionParams)
+class P2pRDD[KVO:ClassTag,T:ClassTag](sc: SparkContext, parent: RDD[KVO], p2pParams: P2pConnectionParams)
   extends RDD[T](parent) {
-//  def asyncConvergence(tuple: (Vector, Double)) = ???
 
   TcpServer.startServer(TcpServer.TestPort)
+  var testingSize : Int = 1000
   override def compute(split: Partition, context: TaskContext): Iterator[T] = {
     val updaterIF =  new UpdaterIF
     val p2pClient = new TcpClient(p2pParams.asInstanceOf[TcpConnectionParams], updaterIF)
-    val dat = parent.compute(split, context).toList
+    val dat = parent.compute(split, context)
+    val converted = dat.map { case (path, idAndData) =>
+      (path.asInstanceOf[String], idAndData.asInstanceOf[String].split(LsRDD.Delim).tail.map(_.toDouble))
+    }.toList
+    val grouped = converted.groupBy(_._1)
+
+    import collection.mutable
+    // TODO: Throw warning or exception if size mismatch
+    val bigarr = converted.map(_._2).foldLeft(mutable.ArrayBuffer[Double]()) { case (buf, darr) =>
+      buf ++ mutable.ArrayBuffer[Double](darr.asInstanceOf[Array[Double]]:_*)
+    }.toArray.slice(0,testingSize)
     val iter = updaterIF.run(ModelParams(new DefaultModel(), new DefaultHyperParams()),
-      dat.toArray.asInstanceOf[AnyData],3)
+      MData("somepath",Seq(2,5),bigarr),3)
     iter.asInstanceOf[Iterator[T]]
   }
 

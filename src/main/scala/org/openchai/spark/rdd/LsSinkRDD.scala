@@ -18,35 +18,36 @@ package org.openchai.spark.rdd
 
 import java.io.File
 
-import org.apache.spark.{TaskContext, Partition, SparkContext}
-import org.apache.spark.rdd.{OrderedRDDFunctions, RDD}
-import org.openchai.spark.util.{Logger, FileUtils}
+import org.apache.spark.rdd.RDD
+import org.apache.spark.{Partition, SparkContext, TaskContext}
+import org.openchai.spark.util.{FileUtils, Logger}
 
-import reflect.runtime.universe._
 import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
 
-case class LsSinkRDD[K1: ClassTag, V1: ClassTag, K2: ClassTag, V2: ClassTag](@transient sc: SparkContext, var paths: Seq[String],
+case class LsSinkRDD[K1: ClassTag, V1: ClassTag, K2: ClassTag, V2: ClassTag](var paths: Seq[String],
   parent: RDD[(K1, V1)])(implicit evk1: TypeTag[K1], evv1: TypeTag[V1], evk2: TypeTag[K2], evv2: TypeTag[V2])
   extends RDD[(K2, V2)](parent) with LsRDD[K2, V2] {
 
-  import LsRDD._
-
   import Logger._
+  import LsRDD._
+  @transient val sc: SparkContext = parent.sparkContext
+
   paths.foreach( p => FileUtils.mkdirs(p))
-  override /* lazy */ val partitioner /*: LsRDDPartitioner[K2,V2]*/ = Some(new LsRDDPartitioner[K2,V2](getPartitions.asInstanceOf[Array[LsRDDPartition[V2]]]))
+  override val partitioner =
+    Some(new LsRDDPartitioner[K2,V2](getPartitions.asInstanceOf[Array[LsRDDPartition[V2]]]))
 
   override def saveAsTextFile(rackPathsSeparatedByCommas: String): Unit = {
     saveToRackPathAsTextFile(rackPathsSeparatedByCommas.split(","))
   }
 
+//  def toRecord(tup: (K1, V1)) = {
   def toRecord(tup: (String, DArray)) = {
     s"${tup._1}$Delim${tup._2}"
 //    s"${tup._1}$Delim${tup._2.asInstanceOf[DArray].mkString(""+Delim)}}"
   }
 
   def saveToRackPathAsTextFile(paths: Seq[String]) = {
-    import SparkContext._
-    import sc._
 //    val partedRdd = parent/*.asInstanceOf[OrderedRDDFunctions[K1,V1,(K1,V1)]]*/.repartitionAndSortWithinPartitions(partitioner.get)
     val partedRdd = parent.partitionBy(partitioner.get)
     val cnt = partedRdd.count

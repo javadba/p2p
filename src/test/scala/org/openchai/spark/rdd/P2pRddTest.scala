@@ -18,13 +18,24 @@ package org.openchai.spark.rdd
 
 import org.apache.spark.SparkContext
 import org.openchai.spark.p2p.{TcpConnectionParams, TcpServer}
+import org.openchai.spark.util.TcpUtils
 
-object P2pRddTest {
+object P2pRDDTest {
   def main(args: Array[String]) = {
     val master = args(0)
+    val server = if (master.startsWith("spark")) {
+      master.substring(master.lastIndexOf("/") + 1, master.lastIndexOf(":"))
+    } else if (master.startsWith("local")) {
+      TcpUtils.getLocalHostname
+    } else {
+      throw new IllegalArgumentException(s"Unable to parse the server from the master $master")
+    }
+
     val sc = new SparkContext(master,"P2pRDDTest")
     val lsrdd = LsRDDTest.sourceRdd(sc, master, "/data/lsrdd")
-    val params = TcpConnectionParams(master, TcpServer.TestPort)
+    val params = TcpConnectionParams(server, TcpServer.TestPort)
     val p2pRdd = new P2pRDD/*[LabeledArr]*/(sc, lsrdd, params)
+    val cnt = p2pRdd.count
+
   }
 }

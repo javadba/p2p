@@ -38,6 +38,10 @@ package object p2p {
     val clientName = TcpUtils.getLocalHostname
   }
 
+  trait ServerIF {
+    def service(req: P2pReq[_]): P2pResp[_]
+  }
+
   sealed trait P2pMessage[T] {
     def value(): T
   }
@@ -47,12 +51,13 @@ package object p2p {
   trait P2pResp[T] extends P2pMessage[T]
 
   trait ArrayData[V] {
+    def tag: String
     def dims: Seq[Int]
     def toArray: V
   }
 
   type DArray = Array[Double]
-  case class MData(override val dims: Seq[Int], override val toArray: DArray) extends ArrayData[DArray]
+  case class MData(override val tag: String, override val dims: Seq[Int], override val toArray: DArray) extends ArrayData[DArray]
   type AnyData = MData
   case class TData(label: Double, data: Vector[Double])
 }

@@ -24,11 +24,22 @@ object TestData {
     _ * new Random().nextDouble
   }
 
+  def parabolicArr(size: Int) = {
+    // y = 1.0 + (0.1 + 0.9*rand)x + (0.01 + 0.1rand)x^2
+    val samplesPerPoint = 10
+    val npoints = size / samplesPerPoint
+    val rand = new Random
+    def f(x: Double) = 1.0 + (0.1+0.9*rand.nextFloat)*x + (0.01 + 0.09*rand.nextFloat)*x*x
+    Array.tabulate(npoints) { case n =>
+      val x = n % samplesPerPoint
+      (x, f(x))
+    }
+  }
   def epochResult(nrows: Int, ncols: Int) = {
     val len = nrows * ncols
-    EpochResult(Weights(Array(nrows, ncols), randArr(len)), /* MData(Seq(nrows, ncols), */ randArr(len) /*)*/,
+    EpochResult(Weights(Array(nrows, ncols), randArr(len)), parabolicArr(len).map(_._2),
       new Random().nextDouble, new Random().nextDouble)
   }
 
-  def mdata(nrows: Int, ncols: Int) = MData(Seq(nrows, ncols), randArr(nrows * ncols))
+  def mdata(nrows: Int, ncols: Int) = MData("someTag", Seq(nrows, ncols), randArr(nrows * ncols))
 }

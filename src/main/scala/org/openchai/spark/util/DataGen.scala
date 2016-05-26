@@ -20,7 +20,7 @@ object DataGen {
         val nrecs = NRecs
         def round(d: Double, k: Int) = (d * Math.pow(10,k)).toLong / Math.pow(10,k)
         val sb = (0 until nrecs).foldLeft(new StringBuffer){ case (sb, ix) =>
-          sb.append(s"$ix\t\t${round(Base * r.nextDouble,2)}")
+          sb.append(s"$ix\t${round(Base * r.nextDouble,2)}")
           val vstr = (0 until ArrSize).foldLeft(new StringBuffer){ case (sbb,xx) =>
             sbb.append(s"\t${round(Base * r.nextDouble,2)}")
           }

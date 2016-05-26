@@ -19,7 +19,8 @@ package org.openchai.spark.p2p
 import org.apache.spark.mllib.linalg.{Vector => SparkVector, SparseVector, DenseVector, Vectors}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.ml.MLProxy._
-import org.openchai.spark.rdd.P2pRDD
+import org.openchai.spark.p2p
+import org.openchai.spark.rdd.{LsRDD, P2pRDD}
 
 object MllibImports {
 
@@ -33,8 +34,9 @@ object MllibImports {
   import breeze.linalg.{DenseVector => BDV, SparseVector => BSV, Vector => BV}
   import breeze.optimize.{CachedDiffFunction, DiffFunction, LBFGS => BreezeLBFGS}
 
+  import LsRDD._
   class AsyncConvergenceCostFun(
-    data: P2pRDD[Double],
+    data: P2pRDD[(String,String),MData],
     gradient: Gradient,
     updater: Updater,
     regParam: Double,

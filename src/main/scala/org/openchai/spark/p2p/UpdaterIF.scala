@@ -57,7 +57,7 @@ class UpdaterIF extends ServiceIF {
     _ * new Random().nextDouble
   })
 
-  def run(training: ModelParams, data: AnyData, maxLoops: Int) = {
+  def run(training: ModelParams, data: MData, maxLoops: Int) = {
     var n = 0
     var trainParams = getModelParams(clientName).value
     if (trainParams.optW.isEmpty) {
@@ -72,63 +72,6 @@ class UpdaterIF extends ServiceIF {
     info(s"We were told to *not* keep going for n=$n")
   }
 
-}
-
-trait ServerIF {
-  def service(req: P2pReq[_]): P2pResp[_]
-}
-
-object UpdaterServerIF {
-  val WeightsMergePolicies = Seq("average", "best")
-}
-
-class UpdaterServerIF(weightsMergePolicy: String) extends ServerIF {
-
-  import UpdaterIF._
-
-  import collection.mutable
-
-  var loops = 0
-  val MaxLoops = 20
-
-  var curWeightsAndAccuracy: (DArray, Double) = (null,-1.0)
-  override def service(req: P2pReq[_]): P2pResp[_] = {
-    val allResults = new mutable.ArrayBuffer[EpochResult]()
-    req match {
-      case o: KeepGoingReq => {
-        KeepGoingResp(o.value < MaxLoops)
-      }
-      case o: GetModelParamsReq => {
-        GetModelParamsResp(ModelParams(DefaultModel(), DefaultHyperParams(),
-          Some(Weights(Array(4, 4), Array.tabulate(16) {
-            _ * new Random().nextDouble
-          }))))
-      }
-      case o: SendEpochResultReq => {
-        val epochResult = o.value
-        allResults += epochResult
-        curWeightsAndAccuracy = {
-          if (weightsMergePolicy == "best") {
-            if (epochResult.accuracy > curWeightsAndAccuracy._2) {
-              info(s"Found best: accuracy = ${epochResult.accuracy}")
-              (epochResult.W.d, epochResult.accuracy)
-            } else {
-              debug("Sorry we're worse .. skipping..")
-              curWeightsAndAccuracy
-            }
-          } else {
-            val sum = allResults.map(x => new BDV[Double](x.W.d))
-              .foldLeft(new BDV[Double](Array.fill(allResults.head.W.d.length)(0.0))) { case (sum, bdv) => sum + bdv }
-            val avg = sum :/ allResults.length.toDouble
-            (avg.toArray, allResults.map(_.accuracy).sum / allResults.length)
-          }
-        }
-        SendEpochResultResp(ModelParams(DefaultModel(), DefaultHyperParams(), Some(Weights(epochResult.W.dims, curWeightsAndAccuracy._1))
-        ))
-      }
-      case _ => throw new IllegalArgumentException(s"Unknown service type ${req.getClass.getName}")
-    }
-  }
 }
 
 object UpdaterIF {
@@ -155,13 +98,12 @@ object UpdaterIF {
     override def toString() = toString(d, dims)
    }
 
-  abstract class Model[T <: AnyData] {
+  abstract class Model[T <: MData] {
     def compute(data: T): EpochResult = ???
 
     def update(params: HyperParams, weights: Weights): Model[T] = ???
 
   }
-
 
   case class DefaultModel() extends Model[MData] {
 
@@ -169,13 +111,15 @@ object UpdaterIF {
 
     val UseLbfgs = true
 
+    val errors = Array.tabulate(20){ d => Math.max(15 - d*0.97,0.001) }
+    var iteration = 0
     override def compute(data: MData): EpochResult = {
 
       val dv = DenseVector(data.toArray)
       implicit class MathOps(x: Double) {
         def :^(y: Double) = Math.pow(x, y)
       }
-      val state = if (UseLbfgs) {
+      val (err, state) = if (UseLbfgs) {
         import breeze.optimize.LBFGS
         def computeObjective(h: DenseMatrix[Double], q: DenseVector[Double], x: DenseVector[Double]): Double = {
           val res = (x.t * h * x) * 0.5 + q.dot(x)
@@ -189,11 +133,13 @@ object UpdaterIF {
           }
         }
 
+        def getCost(H: DenseMatrix[Double], q: DenseVector[Double]) =  Cost(H, q)
+
         def optimizeWithLBFGS(init: DenseVector[Double],
           H: DenseMatrix[Double],
           q: DenseVector[Double]) = {
           val lbfgs = new LBFGS[DenseVector[Double]](-1, 7)
-          val lstate = lbfgs.minimizeAndReturnState(Cost(H, q), init)
+          val lstate = lbfgs.minimizeAndReturnState(getCost(H,q), init)
           lstate
         }
 
@@ -205,8 +151,11 @@ object UpdaterIF {
 
         println(s"Test QuadraticMinimizer, CG , BFGS and OWLQN with $problemSize variables and $nequalities equality constraints")
 
-
-        optimizeWithLBFGS(dv,h,q)
+        val ostate = optimizeWithLBFGS(dv,h,q)
+        val cost = getCost(h,q)
+        val error = errors(iteration) // new Random.computeObjective(cost.H, cost.q,
+        iteration += 1
+        (error,ostate)
 
       } else {
         val optimizer = new ProjectedQuasiNewton(tolerance = 1.0E-5)
@@ -216,9 +165,11 @@ object UpdaterIF {
           }
         }
         val state = optimizer.minimizeAndReturnState(f, dv)
-        state
+        val error = errors(iteration) // new Random.computeObjective(cost.H, cost.q,
+        iteration += 1
+        (error, state)
       }
-      EpochResult(Weights(data.dims, state.x.toArray), state.fVals.toArray, state.value, state.value)
+      EpochResult(Weights(data.dims, state.x.toArray), state.fVals.toArray, err, Math.max(0.01, 1 - err/15.0))
     }
 
     override def update(params: HyperParams, weights: Weights): Model[MData] = {
@@ -239,7 +190,7 @@ object UpdaterIF {
   case class EpochResult(W: Weights, errors: DArray, totalError: Double, accuracy: Double)
 
   case class GetModelParamsReq(val clientName: String) extends P2pReq[String] {
-    override def value() = clientName // placeholder
+    override def value() = clientName // retain the clientName parameter so we know what the value signifies
   }
 
   case class GetModelParamsResp(override val value: ModelParams) extends P2pResp[ModelParams]

@@ -51,7 +51,7 @@ object LsRDDTest {
     FileUtils.mkdirs(dir)
     val dirs = (0 until 5).map(d => s"$dir/sink$d")
     val rpaths = dirs.map(d => s"${TcpUtils.getLocalHostname}:${RackPath.hostToRack(TcpUtils.getLocalHostname)}:$d")
-    val lsrdd = new LsSinkRDD[String,String,String,String](sc, rpaths, parent)
+    val lsrdd = new LsSinkRDD[String,String,String,String](rpaths, parent)
     lsrdd
   }
 

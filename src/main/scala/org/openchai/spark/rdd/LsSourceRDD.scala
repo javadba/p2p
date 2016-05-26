@@ -42,9 +42,11 @@ case class LsSourceRDD[K1: /*Ordering: */ClassTag, V1: ClassTag, K2: /*Ordering:
     val host = rp.host
     val sourceHost = host match {
       case h if InetAddress.getLocalHost.getHostName.equals(host) => h
-      case _ => RackPath.hostToRack(host)
+//      case h if (h in rackpaths) => RackPath.hostToRack(host)
+      case h => throw new UnsupportedOperationException(s"scp not implemented yet (requested host=$h)")
     }
     // TODO: st up scp read from the host
+
     val d = FileUtils.readPath(rp.path)
     d
   }
